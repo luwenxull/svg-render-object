@@ -5,32 +5,65 @@ export interface IPosition {
   y: number;
 }
 
-export interface IRenderObjectSurface {
-  opacity: number;
+export interface IAttrOrStyle {
+  [p: string]: string | number;
 }
 
-export interface IRenderObject<S = any> {
-  name: string;
-  children: IRenderObject[];
-  position: IPosition;
-  surface: S;
+export interface IRenderObjectOption {
+  opacity?: number;
+  visible?: boolean;
+  attr?: IAttrOrStyle;
+  style?: IAttrOrStyle;
+  position?: {
+    x: number;
+    y: number;
+  };
+}
+
+export interface IRenderObject {
+  tag: string;
   visible: boolean;
+  opacity: number;
+  attr: IAttrOrStyle;
+  style: IAttrOrStyle;
+  position: IPosition;
+  children: IRenderObject[];
+  needUpdateSurface: boolean;
+  needUpdatePosition: boolean;
+  ele_selection?: Selection<SVGElement, any, any, any>;
   add(child: IRenderObject): IRenderObject;
   renderTo(parent: SVGElement): IRenderObject;
+  update(): void;
 }
 
-export default abstract class RenderObject<S extends IRenderObjectSurface>
-  implements IRenderObject<S> {
-  public name: string;
-  public children: IRenderObject[];
+export class RenderObject<T> implements IRenderObject {
   public visible: boolean;
-  protected _selection_self?: Selection<SVGElement, any, any, any>;
-  protected needUpdateSurface: boolean;
-  protected needUpdatePosition: boolean;
-  constructor(public surface: S, public position: IPosition) {
-    this.name = '';
+  public opacity: number;
+  public attr: IAttrOrStyle;
+  public style: IAttrOrStyle;
+  public position: IPosition;
+  public children: IRenderObject[];
+  public needUpdateSurface: boolean;
+  public needUpdatePosition: boolean;
+  public ele_selection?: Selection<SVGElement, any, any, any>;
+  constructor(
+    public tag: string, // tag名称
+    option: IRenderObjectOption = {},
+    public data?: T // 自定义data
+  ) {
+    const {
+      attr = {},
+      style = {},
+      visible = true,
+      opacity = 1,
+      position = { x: 0, y: 0 }
+    } = option;
+    this.attr = attr;
+    this.style = style;
+    this.visible = visible;
+    this.opacity = opacity;
     this.children = [];
-    this.visible = true; // 默认可见
+    this.position = position;
     this.needUpdateSurface = true;
     this.needUpdatePosition = true;
   }
@@ -51,28 +84,27 @@ export default abstract class RenderObject<S extends IRenderObjectSurface>
     this.initElement(parent);
     this.update();
     this.children.forEach(child => {
-      child.renderTo((this._selection_self as any).node());
+      child.renderTo((this.ele_selection as any).node());
     });
     return this;
   }
 
-  public update(): this {
-    if (this._selection_self) {
+  public update(): void {
+    if (this.ele_selection) {
       if (this.visible === true) {
         if (this.needUpdateSurface) {
           this.updateSurface();
           this.needUpdateSurface = false;
         }
-        if (this.needUpdatePosition && this.position) {
+        if (this.needUpdatePosition) {
           this.updatePosition();
           this.needUpdatePosition = false;
         }
-        this._selection_self.style('display', '');
+        this.ele_selection.style('display', '');
       } else {
-        this._selection_self.style('display', 'none');
+        this.ele_selection.style('display', 'none');
       }
     }
-    return this;
   }
 
   /**
@@ -82,10 +114,21 @@ export default abstract class RenderObject<S extends IRenderObjectSurface>
    * @returns {this}
    * @memberof RenderObject
    */
-  protected updateSurface(): this {
-    const { opacity } = this.surface;
-    (<any>this._selection_self).style('opacity', opacity);
-    return this;
+  protected updateSurface(): void {
+    if (this.ele_selection) {
+      const { attr, style } = this;
+      const fn = () => {};
+      this.ele_selection.call(
+        (selection, datas: { data: IAttrOrStyle; fn: 'style' | 'attr' }[]) => {
+          datas.forEach(({ data, fn }) => {
+            Object.keys(data).forEach(key => {
+              selection[fn](key, data[key]);
+            });
+          });
+        },
+        [{ data: style, fn: 'style' }, { data: attr, fn: 'attr' }]
+      );
+    }
   }
 
   /**
@@ -95,14 +138,13 @@ export default abstract class RenderObject<S extends IRenderObjectSurface>
    * @returns {this}
    * @memberof RenderObject
    */
-  protected updatePosition(): this {
-    const { x, y } = this.position as IPosition;
-    (<any>this._selection_self).attr('transform', `translate(${x}, ${y})`);
-    return this;
+  protected updatePosition(): void {
+    const { x, y } = this.position;
+    (<any>this.ele_selection).attr('transform', `translate(${x}, ${y})`);
   }
 
   protected initElement(parent: SVGElement): this {
-    this._selection_self = select(parent).append(this.name);
+    this.ele_selection = select(parent).append(this.tag);
     return this;
   }
 }
