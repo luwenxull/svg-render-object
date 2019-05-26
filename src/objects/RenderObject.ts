@@ -33,7 +33,8 @@ export interface IRenderObject {
   ele_selection?: Selection<SVGElement, any, any, any>;
   add(child: IRenderObject): IRenderObject;
   renderTo(parent: SVGElement): IRenderObject;
-  update(): void;
+  update(): IRenderObject;
+  on(event: string, callback: () => void): IRenderObject;
 }
 
 export class RenderObject<T> implements IRenderObject {
@@ -46,6 +47,7 @@ export class RenderObject<T> implements IRenderObject {
   public needUpdateSurface: boolean;
   public needUpdatePosition: boolean;
   public ele_selection?: Selection<SVGElement, any, any, any>;
+  private pendingEvents: Array<[string, () => void]>;
   constructor(
     public tag: string, // tag名称
     option: IRenderObjectOption = {},
@@ -66,6 +68,7 @@ export class RenderObject<T> implements IRenderObject {
     this.position = position;
     this.needUpdateSurface = true;
     this.needUpdatePosition = true;
+    this.pendingEvents = [];
   }
 
   /**
@@ -80,6 +83,13 @@ export class RenderObject<T> implements IRenderObject {
     return this;
   }
 
+  /**
+   * 绘制到dom
+   *
+   * @param {SVGElement} parent
+   * @returns {this}
+   * @memberof RenderObject
+   */
   public renderTo(parent: SVGElement): this {
     this.initElement(parent);
     this.update();
@@ -89,7 +99,13 @@ export class RenderObject<T> implements IRenderObject {
     return this;
   }
 
-  public update(): void {
+  /**
+   *
+   *
+   * @returns {this}
+   * @memberof RenderObject
+   */
+  public update(): this {
     if (this.ele_selection) {
       if (this.visible === true) {
         if (this.needUpdateSurface) {
@@ -105,6 +121,16 @@ export class RenderObject<T> implements IRenderObject {
         this.ele_selection.style('display', 'none');
       }
     }
+    return this;
+  }
+
+  public on(name: string, callback: () => void): this {
+    if (this.ele_selection) {
+      this.ele_selection.on(name, callback);
+    } else {
+      this.pendingEvents.push([name, callback]);
+    }
+    return this;
   }
 
   /**
@@ -115,20 +141,18 @@ export class RenderObject<T> implements IRenderObject {
    * @memberof RenderObject
    */
   protected updateSurface(): void {
-    if (this.ele_selection) {
-      const { attr, style } = this;
-      const fn = () => {};
-      this.ele_selection.call(
-        (selection, datas: { data: IAttrOrStyle; fn: 'style' | 'attr' }[]) => {
-          datas.forEach(({ data, fn }) => {
-            Object.keys(data).forEach(key => {
-              selection[fn](key, data[key]);
-            });
+    const ele = this.ele_selection as Selection<SVGElement, any, any, any>;
+    const { attr, style } = this;
+    ele.call(
+      (selection, datas: { data: IAttrOrStyle; fn: 'style' | 'attr' }[]) => {
+        datas.forEach(({ data, fn }) => {
+          Object.keys(data).forEach(key => {
+            selection[fn](key, data[key]);
           });
-        },
-        [{ data: style, fn: 'style' }, { data: attr, fn: 'attr' }]
-      );
-    }
+        });
+      },
+      [{ data: style, fn: 'style' }, { data: attr, fn: 'attr' }]
+    );
   }
 
   /**
@@ -139,12 +163,21 @@ export class RenderObject<T> implements IRenderObject {
    * @memberof RenderObject
    */
   protected updatePosition(): void {
+    const ele = this.ele_selection as Selection<SVGElement, any, any, any>;
     const { x, y } = this.position;
-    (<any>this.ele_selection).attr('transform', `translate(${x}, ${y})`);
+    const reg = /translate\(.+\)/;
+    const transform = ele.attr('transform') || '';
+    ele.attr('transform', transform.replace(reg, '') + `translate(${x}, ${y})`);
   }
 
   protected initElement(parent: SVGElement): this {
     this.ele_selection = select(parent).append(this.tag);
+    this.pendingEvents.forEach(([name, callback]) => {
+      (this.ele_selection as Selection<SVGElement, any, any, any>).on(
+        name,
+        callback
+      );
+    });
     return this;
   }
 }

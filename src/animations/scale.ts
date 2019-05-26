@@ -1,10 +1,28 @@
 import { IRenderObject } from '../objects';
 
-export default function scale(renderObject: IRenderObject, factor: number) {
+/**
+ *
+ *
+ * @export
+ * @param {IRenderObject} renderObject
+ * @param {number} factor
+ * @param {() => void} end
+ */
+export default function scale(
+  renderObject: IRenderObject,
+  factor: number,
+  end?: () => void
+) {
   if (renderObject.ele_selection) {
+    const ele = renderObject.ele_selection;
+    const reg = /scale\(.+\)/;
+    const transform = ele.attr('transform') || '';
     renderObject.ele_selection
       .transition('scale')
       .duration(200)
-      .attr('transform', `scale(${factor})`);
+      .attr('transform', transform.replace(reg, '') + `scale(${factor})`)
+      .on('end', () => {
+        typeof end === 'function' && end();
+      });
   }
 }

@@ -29,7 +29,8 @@ export interface IRenderObject {
   ele_selection?: Selection<SVGElement, any, any, any>;
   add(child: IRenderObject): IRenderObject;
   renderTo(parent: SVGElement): IRenderObject;
-  update(): void;
+  update(): IRenderObject;
+  on(event: string, callback: () => void): IRenderObject;
 }
 export declare class RenderObject<T> implements IRenderObject {
   tag: string;
@@ -43,6 +44,7 @@ export declare class RenderObject<T> implements IRenderObject {
   needUpdateSurface: boolean;
   needUpdatePosition: boolean;
   ele_selection?: Selection<SVGElement, any, any, any>;
+  private pendingEvents;
   constructor(
     tag: string, // tag名称
     option?: IRenderObjectOption,
@@ -56,8 +58,22 @@ export declare class RenderObject<T> implements IRenderObject {
    * @memberof RenderObject
    */
   add(child: IRenderObject): this;
+  /**
+   * 绘制到dom
+   *
+   * @param {SVGElement} parent
+   * @returns {this}
+   * @memberof RenderObject
+   */
   renderTo(parent: SVGElement): this;
-  update(): void;
+  /**
+   *
+   *
+   * @returns {this}
+   * @memberof RenderObject
+   */
+  update(): this;
+  on(name: string, callback: () => void): this;
   /**
    * 更新surface
    *
