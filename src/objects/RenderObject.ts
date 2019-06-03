@@ -20,7 +20,7 @@ export interface IRenderObjectOption {
   };
 }
 
-export interface IRenderObject {
+export interface IRenderObject<T = any> {
   tag: string;
   visible: boolean;
   opacity: number;
@@ -31,13 +31,14 @@ export interface IRenderObject {
   needUpdateSurface: boolean;
   needUpdatePosition: boolean;
   ele_selection?: Selection<SVGElement, any, any, any>;
+  data: T;
   add(child: IRenderObject): IRenderObject;
   renderTo(parent: SVGElement): IRenderObject;
   update(): IRenderObject;
   on(event: string, callback: () => void): IRenderObject;
 }
 
-export class RenderObject<T> implements IRenderObject {
+export class RenderObject<T> implements IRenderObject<T> {
   public visible: boolean;
   public opacity: number;
   public attr: IAttrOrStyle;
@@ -47,11 +48,12 @@ export class RenderObject<T> implements IRenderObject {
   public needUpdateSurface: boolean;
   public needUpdatePosition: boolean;
   public ele_selection?: Selection<SVGElement, any, any, any>;
+  public data: T;
   private pendingEvents: Array<[string, () => void]>;
   constructor(
     public tag: string, // tag名称
     option: IRenderObjectOption = {},
-    public data?: T // 自定义data
+    data?: T // 自定义data
   ) {
     const {
       attr = {},
@@ -69,6 +71,7 @@ export class RenderObject<T> implements IRenderObject {
     this.needUpdateSurface = true;
     this.needUpdatePosition = true;
     this.pendingEvents = [];
+    this.data = data as T;
   }
 
   /**
@@ -100,7 +103,8 @@ export class RenderObject<T> implements IRenderObject {
   }
 
   /**
-   *
+   * 更新入口
+   * 负责调用updateSurface和updatePosition
    *
    * @returns {this}
    * @memberof RenderObject
@@ -124,6 +128,14 @@ export class RenderObject<T> implements IRenderObject {
     return this;
   }
 
+  /**
+   * 事件监听绑定函数
+   *
+   * @param {string} name
+   * @param {() => void} callback
+   * @returns {this}
+   * @memberof RenderObject
+   */
   public on(name: string, callback: () => void): this {
     if (this.ele_selection) {
       this.ele_selection.on(name, callback);
@@ -170,6 +182,14 @@ export class RenderObject<T> implements IRenderObject {
     ele.attr('transform', transform.replace(reg, '') + `translate(${x}, ${y})`);
   }
 
+  /**
+   * 初始化svg元素
+   *
+   * @protected
+   * @param {SVGElement} parent
+   * @returns {this}
+   * @memberof RenderObject
+   */
   protected initElement(parent: SVGElement): this {
     this.ele_selection = select(parent).append(this.tag);
     this.pendingEvents.forEach(([name, callback]) => {

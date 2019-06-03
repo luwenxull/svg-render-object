@@ -1,14 +1,15 @@
-import { IRenderObject } from '../objects';
+import { Selection } from 'd3-selection';
+import 'd3-transition';
 /**
  *
  *
  * @export
- * @param {IRenderObject} renderObject
+ * @param {Selection<SVGElement, any, any, any>} ele
  * @param {number} factor
- * @param {() => void} end
+ * @param {() => void} [end]
  */
 export default function scale(
-  renderObject: IRenderObject,
+  ele: Selection<SVGElement, any, any, any>,
   factor: number,
   end?: () => void
 ): void;

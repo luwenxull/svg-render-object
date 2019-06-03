@@ -1,28 +1,26 @@
-import { IRenderObject } from '../objects';
+import { Selection } from 'd3-selection';
+import 'd3-transition';
 
 /**
  *
  *
  * @export
- * @param {IRenderObject} renderObject
+ * @param {Selection<SVGElement, any, any, any>} ele
  * @param {number} factor
- * @param {() => void} end
+ * @param {() => void} [end]
  */
 export default function scale(
-  renderObject: IRenderObject,
+  ele: Selection<SVGElement, any, any, any>,
   factor: number,
   end?: () => void
 ) {
-  if (renderObject.ele_selection) {
-    const ele = renderObject.ele_selection;
-    const reg = /scale\(.+\)/;
-    const transform = ele.attr('transform') || '';
-    renderObject.ele_selection
-      .transition('scale')
-      .duration(200)
-      .attr('transform', transform.replace(reg, '') + `scale(${factor})`)
-      .on('end', () => {
-        typeof end === 'function' && end();
-      });
-  }
+  const reg = /scale\(.+\)/;
+  const transform = ele.attr('transform') || '';
+  ele
+    .transition('scale')
+    .duration(200)
+    .attr('transform', transform.replace(reg, '') + `scale(${factor})`)
+    .on('end', () => {
+      typeof end === 'function' && end();
+    });
 }

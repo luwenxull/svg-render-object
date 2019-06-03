@@ -16,7 +16,7 @@ export interface IRenderObjectOption {
     y: number;
   };
 }
-export interface IRenderObject {
+export interface IRenderObject<T = any> {
   tag: string;
   visible: boolean;
   opacity: number;
@@ -27,14 +27,14 @@ export interface IRenderObject {
   needUpdateSurface: boolean;
   needUpdatePosition: boolean;
   ele_selection?: Selection<SVGElement, any, any, any>;
+  data: T;
   add(child: IRenderObject): IRenderObject;
   renderTo(parent: SVGElement): IRenderObject;
   update(): IRenderObject;
   on(event: string, callback: () => void): IRenderObject;
 }
-export declare class RenderObject<T> implements IRenderObject {
+export declare class RenderObject<T> implements IRenderObject<T> {
   tag: string;
-  data?: T | undefined;
   visible: boolean;
   opacity: number;
   attr: IAttrOrStyle;
@@ -44,11 +44,12 @@ export declare class RenderObject<T> implements IRenderObject {
   needUpdateSurface: boolean;
   needUpdatePosition: boolean;
   ele_selection?: Selection<SVGElement, any, any, any>;
+  data: T;
   private pendingEvents;
   constructor(
     tag: string, // tag名称
     option?: IRenderObjectOption,
-    data?: T | undefined
+    data?: T
   );
   /**
    * 添加子对象
@@ -67,12 +68,21 @@ export declare class RenderObject<T> implements IRenderObject {
    */
   renderTo(parent: SVGElement): this;
   /**
-   *
+   * 更新入口
+   * 负责调用updateSurface和updatePosition
    *
    * @returns {this}
    * @memberof RenderObject
    */
   update(): this;
+  /**
+   * 事件监听绑定函数
+   *
+   * @param {string} name
+   * @param {() => void} callback
+   * @returns {this}
+   * @memberof RenderObject
+   */
   on(name: string, callback: () => void): this;
   /**
    * 更新surface
@@ -90,5 +100,13 @@ export declare class RenderObject<T> implements IRenderObject {
    * @memberof RenderObject
    */
   protected updatePosition(): void;
+  /**
+   * 初始化svg元素
+   *
+   * @protected
+   * @param {SVGElement} parent
+   * @returns {this}
+   * @memberof RenderObject
+   */
   protected initElement(parent: SVGElement): this;
 }
